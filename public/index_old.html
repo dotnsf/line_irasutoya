@@ -6,9 +6,6 @@
 <script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
 <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet"/>
 <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.min.js"></script>
-<link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.css" media="screen" />
-<link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick-theme.css" media="screen" />
 <script src="https://d.line-scdn.net/liff/1.0/sdk.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -20,20 +17,37 @@ html, body{
   font-size: 20px;
   color: #333;
 }
-
-.slick-slide{
-  position: relative;
+.carousel-caption{
+  top: 0;
+  bottom: auto;
 }
-.slick-slide .caption{
-  position: absolute;
-  left: 0;
-  z-index: 2;
-  width: calc(100% - 40px);
-  padding: 20px;
+.carousel-caption h5{
+  font-weight: bold;
   color: #003;
-  font-size: 14px;
-  opacity: 1;
-  transition: .3s ease;
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  height: 100px;
+  width: 100px;
+  outline: black;
+  background-size: 100%, 100%;
+  border-radius: 50%;
+  border: 1px solid black;
+  background-image: none;
+}
+
+.carousel-control-next-icon:after
+{
+  content: '>';
+  font-size: 55px;
+  color: red;
+}
+
+.carousel-control-prev-icon:after {
+  content: '<';
+  font-size: 55px;
+  color: red;
 }
 </style>
 </head>
@@ -42,14 +56,25 @@ html, body{
     <option value="">（カテゴリーを選択）</option>
   </select>
 
-  <div id="mycarousel" class="slick-box">
+  <div id="mycarousel" class="carousel slide" data-ride="carousel" data-interval="false" data-wrap="false">
+    <div class="carousel-inner" id="mycarousel-inner">
+    </div>
+
+    <a class="carousel-control-prev" href="#mycarousel" role="button" data-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="sr-only">前へ</span>
+    </a>
+    <a class="carousel-control-next" href="#mycarousel" role="button" data-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="sr-only">次へ</span>
+    </a>
   </div>
 </div>
 
 <script>
+var isFirst = true;
 var nexturl = '';
-var inner = '';
-var displaySlide = 0;
+var myc = null;
 $(function(){
   $.ajax({
     type: 'GET',
@@ -63,8 +88,8 @@ $(function(){
         });
 
         $('#categories').change( function(){
-          inner = '';
-          $('#mycarousel').html( inner );
+          isFirst = true;
+          $('#mycarousel-inner').html( '' );
 
           var url = $(this).val();
           //console.log( 'url = ' + url );
@@ -79,6 +104,20 @@ $(function(){
     }
   });
 
+  $('#mycarousel').bind( 'slide.bs.carousel', function( e ){
+    //console.log( e );
+    var to = e.to;
+
+    if( myc && myc.context && myc.context.images && nexturl ){
+      var images = myc.context.images;
+      //console.log( '#' + to + ' / ' + images.length  );
+      if( images.length == to + 1 ){
+        //console.log( 'right: ' + nexturl );
+        showByUrl( nexturl );
+      }
+    }
+  });
+
   liff.init(
     data => {},
     err => {
@@ -88,7 +127,7 @@ $(function(){
 });
 
 function showByUrl( url ){
-  //console.log( 'showByUrl : url = ' + url );
+console.log( 'showByUrl : url = ' + url );
   if( url ){
     $.ajax({
       type: 'GET',
@@ -98,33 +137,15 @@ function showByUrl( url ){
         nexturl = data.next;
         if( data && data.list ){
           data.list.forEach( function( item ){
-            var figure = '<figure>'
-              + '<p class="caption">' + item.name + '</p>'
-              + '<a href ="#" title="' + item.name + '" onClick="imgClick(\'' + item.img_src + '\');">'
-              + '<img src="' + item.img_src + '" width="100%" alt="' + item.name + '"/>'
-              + '</a>'
-              + '</figure>';
-            inner += figure;
-            //$('#mycarousel').append( figure );
-          });
-
-          $('#mycarousel').html( '<div id="mycarousel-inner"></div>' );
-          $('#mycarousel-inner').html( inner );
-          $('#mycarousel-inner').slick({
-            arrows: true,
-            autoplay: false,
-            infinite: false,
-            initialSlide: displaySlide,
-            slidesToShow: 1,
-            slidesToScroll: 1
-          });
-          $('#mycarousel-inner').on( 'afterChange', function( evt, slick, currentSlide ){
-            //console.log( 'currentSlide: ' + currentSlide );
-            if( nexturl && currentSlide + 1 == slick.slideCount ){
-              displaySlide = currentSlide;
-              showByUrl( nexturl );
+            var div = '<div class="carousel-item';
+            if( isFirst ){
+              div += ' active';
+              isFirst = false;
             }
+            div += '"><a href="#" title="' + item.name + '" onClick="imgClick(\'' + item.img_src + '\');"><img class="d-block w-100" src="' + item.img_src + '" alt="' + item.name + '"/><div class="carousel-caption d-md-block"><h5>' + item.name + '</h5></div></a></div>';
+            $('#mycarousel-inner').append( div );
           });
+          myc = $('#mycarousel').carousel();
         }
       },
       error: function( xhr, err, status ){
