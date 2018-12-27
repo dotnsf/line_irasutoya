@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<title>Irasutoya</title>
+<script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="https://d.line-scdn.net/liff/1.0/sdk.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+
+<style type="text/css">
+html, body{
+  text-align: center;
+  background-color: #fafafa;
+  font-size: 20px;
+  color: #333;
+}
+.carousel-caption{
+  top: 0;
+  bottom: auto;
+}
+.carousel-caption h5{
+  font-weight: bold;
+  color: #003;
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  height: 100px;
+  width: 100px;
+  outline: black;
+  background-size: 100%, 100%;
+  border-radius: 50%;
+  border: 1px solid black;
+  background-image: none;
+}
+
+.carousel-control-next-icon:after
+{
+  content: '>';
+  font-size: 55px;
+  color: red;
+}
+
+.carousel-control-prev-icon:after {
+  content: '<';
+  font-size: 55px;
+  color: red;
+}
+</style>
+</head>
+<body>
+  <select class="form-control" id="categories">
+    <option value="">（カテゴリーを選択）</option>
+  </select>
+
+  <div id="mycarousel" class="carousel slide" data-ride="carousel" data-interval="false" data-wrap="false">
+    <div class="carousel-inner" id="mycarousel-inner">
+    </div>
+
+    <a class="carousel-control-prev" href="#mycarousel" role="button" data-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="sr-only">前へ</span>
+    </a>
+    <a class="carousel-control-next" href="#mycarousel" role="button" data-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="sr-only">次へ</span>
+    </a>
+  </div>
+</div>
+
+<script>
+var isFirst = true;
+var nexturl = '';
+var myc = null;
+$(function(){
+  $.ajax({
+    type: 'GET',
+    url: '/categories',
+    success: function( result ){
+      //console.log( result );
+      if( result && result.length ){
+        result.forEach( function( category ){
+          var option = '<option value="' + category.url + '">' + category.name + '</option>';
+          $('#categories').append( option );
+        });
+
+        $('#categories').change( function(){
+          isFirst = true;
+          $('#mycarousel-inner').html( '' );
+
+          var url = $(this).val();
+          //console.log( 'url = ' + url );
+          if( url ){
+            showByUrl( url );
+          }
+        });
+      }
+    },
+    error: function( xhr, err, status ){
+      console.log( err );
+    }
+  });
+
+  $('#mycarousel').bind( 'slide.bs.carousel', function( e ){
+    //console.log( e );
+    var to = e.to;
+
+    if( myc && myc.context && myc.context.images && nexturl ){
+      var images = myc.context.images;
+      //console.log( '#' + to + ' / ' + images.length  );
+      if( images.length == to + 1 ){
+        //console.log( 'right: ' + nexturl );
+        showByUrl( nexturl );
+      }
+    }
+  });
+
+  liff.init(
+    data => {},
+    err => {
+      console.log( err );
+    }
+  );
+});
+
+function showByUrl( url ){
+console.log( 'showByUrl : url = ' + url );
+  if( url ){
+    $.ajax({
+      type: 'GET',
+      url: '/category_list?url=' + url,
+      success: function( data ){
+        //console.log( data );
+        nexturl = data.next;
+        if( data && data.list ){
+          data.list.forEach( function( item ){
+            var div = '<div class="carousel-item';
+            if( isFirst ){
+              div += ' active';
+              isFirst = false;
+            }
+            div += '"><a href="#" title="' + item.name + '" onClick="imgClick(\'' + item.img_src + '\');"><img class="d-block w-100" src="' + item.img_src + '" alt="' + item.name + '"/><div class="carousel-caption d-md-block"><h5>' + item.name + '</h5></div></a></div>';
+            $('#mycarousel-inner').append( div );
+          });
+          myc = $('#mycarousel').carousel();
+        }
+      },
+      error: function( xhr, err, status ){
+        console.log( err );
+      }
+    });
+  }
+}
+
+function imgClick( img_url ){
+  //alert( img_url );
+  var thumbnail_url = img_url.split( 's180-c' ).join( 's72-c' );
+
+  var data = {
+    type: 'image',
+    originalContentUrl: img_url,
+    previewImageUrl: thumbnail_url
+  };
+
+  liff.sendMessages([
+    data
+  ]).then( () => {
+    liff.closeWindow();
+  }).catch( ( err ) => {
+    console.log( 'error', err );
+  });
+}
+</script>
+</body>
+</html>
