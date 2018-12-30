@@ -40,7 +40,9 @@ html, body{
 <body>
   <select class="form-control" id="categories">
     <option value="">（カテゴリーを選択）</option>
+    <option value="search">（キーワード検索）</option>
   </select>
+  <form id="searchform" method="GET" action="/search"><input type="text" class="form-control" placeholder="（検索ワード）" id="search" value="" style="display:none;"/></form>
 
   <div id="mycarousel" class="slick-box">
   </div>
@@ -69,7 +71,17 @@ $(function(){
           var url = $(this).val();
           //console.log( 'url = ' + url );
           if( url ){
-            showByUrl( url );
+            if( url.indexOf( '/label' ) > -1 ){
+              $('#search').css( 'display', 'none' );
+              showByUrl( url );
+            }else{
+              $('#search').val( '' );
+              $('#search').css( 'display', 'block' );
+              $('#searchform').submit( function(){
+                search( $('#search').val() );
+                return false;
+              });
+            }
           }
         });
       }
@@ -86,6 +98,52 @@ $(function(){
     }
   );
 });
+
+function search( keyword ){
+  if( keyword ){
+    $.ajax({
+      type: 'GET',
+      url: '/search?q=' + keyword,
+      success: function( data ){
+        //console.log( data );
+        nexturl = data.next;
+        if( data && data.list ){
+          data.list.forEach( function( item ){
+            var figure = '<figure>'
+              + '<p class="caption">' + item.name + '</p>'
+              + '<a href ="#" title="' + item.name + '" onClick="imgClick(\'' + item.img_src + '\');">'
+              + '<img src="' + item.img_src + '" width="100%" alt="' + item.name + '"/>'
+              + '</a>'
+              + '</figure>';
+            inner += figure;
+            //$('#mycarousel').append( figure );
+          });
+
+          $('#mycarousel').html( '<div id="mycarousel-inner"></div>' );
+          $('#mycarousel-inner').html( inner );
+          $('#mycarousel-inner').slick({
+            arrows: true,
+            autoplay: false,
+            infinite: false,
+            initialSlide: displaySlide,
+            slidesToShow: 1,
+            slidesToScroll: 1
+          });
+          $('#mycarousel-inner').on( 'afterChange', function( evt, slick, currentSlide ){
+            //console.log( 'currentSlide: ' + currentSlide );
+            if( nexturl && currentSlide + 1 == slick.slideCount ){
+              displaySlide = currentSlide;
+              showByUrl( nexturl );
+            }
+          });
+        }
+      },
+      error: function( xhr, err, status ){
+        console.log( err );
+      }
+    });
+  }
+}
 
 function showByUrl( url ){
   //console.log( 'showByUrl : url = ' + url );
